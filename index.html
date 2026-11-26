@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>まいにち健康メモ（排泄記録）</title>
+    <!-- Tailwind CSSの読み込み -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts (丸ゴシックで温かみと読みやすさを重視) -->
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+    <!-- Chart.jsの読み込み（グラフ描画用） -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Zen Maru Gothic', sans-serif;
+            background-color: #FDFBF7; /* 目に優しいクリーム色 */
+            color: #2D3748;
+            touch-action: manipulation; /* ダブルタップズーム防止 */
+        }
+        /* ボタンの押し心地を表現するカスタムスタイル */
+        .btn-push {
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+        }
+        .btn-push:active {
+            transform: translateY(4px);
+            box-shadow: none !important;
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-12">
+
+    <!-- ヘッダー -->
+    <header class="bg-emerald-600 text-white py-4 px-4 shadow-md sticky top-0 z-10">
+        <div class="max-w-2xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <!-- ノートとハートのイラストアイコン -->
+                <svg class="w-8 h-8 text-emerald-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                </svg>
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-black tracking-wider leading-tight">まいにち健康メモ</h1>
+                    <p id="syncStatus" class="text-xs sm:text-sm text-emerald-100 font-bold flex items-center">
+                        <span class="w-2 h-2 rounded-full bg-amber-300 inline-block mr-1.5 animate-pulse"></span>じゅんび中...
+                    </p>
+                </div>
+            </div>
+            <button onclick="resetTodayConfirm()" class="bg-emerald-700 hover:bg-emerald-800 text-white text-sm sm:text-base font-bold py-2 px-3 rounded-xl border border-emerald-500">
+                やりなおす
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-2xl mx-auto px-4 pt-6 space-y-6">
+
+        <!-- 日付切り替えナビゲーション -->
+        <section class="bg-white rounded-3xl p-4 shadow-sm border-2 border-stone-200 flex items-center justify-between">
+            <button onclick="changeDate(-1)" class="btn-push bg-stone-100 hover:bg-stone-200 text-stone-700 font-black text-xl sm:text-2xl py-3 px-5 rounded-2xl shadow-[0_4px_0_#d6d3d1] flex items-center">
+                ◀ まえの日
+            </button>
+            
+            <div class="text-center">
+                <div id="todayBadge" class="inline-block bg-amber-100 text-amber-800 text-sm font-black px-3 py-0.5 rounded-full mb-1">
+                    きょうの記録
+                </div>
+                <h2 id="currentDateDisplay" class="text-2xl sm:text-3xl font-black text-stone-800">
+                    11月26日 (木)
+                </h2>
+            </div>
+
+            <button id="nextDayBtn" onclick="changeDate(1)" class="btn-push bg-stone-100 hover:bg-stone-200 text-stone-700 font-black text-xl sm:text-2xl py-3 px-5 rounded-2xl shadow-[0_4px_0_#d6d3d1] flex items-center disabled:opacity-40 disabled:pointer-events-none">
+                つぎの日 ▶
+            </button>
+        </section>
+
+        <!-- 入力カードエリア（3項目） -->
+        <section class="space-y-5">
+
+            <!-- 1. おしっこ（起きているとき） -->
+            <div class="bg-amber-50 rounded-3xl p-5 sm:p-6 shadow-sm border-4 border-amber-300">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div class="flex items-center space-x-4">
+                        <!-- お日さまとしずくのイラスト -->
+                        <div class="w-20 h-20 sm:w-24 sm:h-24 bg-amber-200 rounded-2xl flex items-center justify-center shrink-0 border-2 border-amber-400">
+                            <svg class="w-14 h-14 sm:w-16 sm:h-16" viewBox="0 0 64 64" fill="none">
+                                <!-- 太陽 -->
+                                <circle cx="22" cy="22" r="10" fill="#F59E0B"/>
+                                <path d="M22 6V10M22 34V38M6 22H10M34 22H38M11 11L14 14M30 30L33 33M33 11L30 14M14 30L11 33" stroke="#F59E0B" stroke-width="3.5" stroke-linecap="round"/>
+                                <!-- 大きなしずく -->
+                                <path d="M44 24C44 24 32 38 32 46C32 52.6274 37.3726 58 44 58C50.6274 58 56 52.6274 56 46C56 38 44 24 44 24Z" fill="#FBBF24" stroke="#B45309" stroke-width="3"/>
+                                <path d="M40 46C40 48.5 41.5 50.5 44 51" stroke="#FEF3C7" stroke-width="3" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl sm:text-3xl font-black text-amber-950">おしっこ</h3>
+                            <p class="text-base sm:text-lg font-bold text-amber-800">起きているとき</p>
+                        </div>
+                    </div>
+
+                    <!-- 回数表示 -->
+                    <div class="flex items-baseline justify-center sm:justify-end bg-white px-6 py-3 rounded-2xl border-2 border-amber-300">
+                        <span id="peeCount" class="text-5xl sm:text-6xl font-black text-amber-600">0</span>
+                        <span class="text-2xl font-black text-stone-700 ml-2">回</span>
+                    </div>
+                </div>
+
+                <!-- 操作ボタン -->
+                <div class="grid grid-cols-3 gap-3 mt-5">
+                    <button onclick="updateCount('pee', -1)" class="btn-push col-span-1 bg-white hover:bg-amber-100 text-amber-900 font-black text-lg sm:text-xl py-4 rounded-2xl border-2 border-amber-300 shadow-[0_4px_0_#fcd34d]">
+                        － 1回<br><span class="text-sm font-bold">へらす</span>
+                    </button>
+                    <button onclick="updateCount('pee', 1)" class="btn-push col-span-2 bg-amber-400 hover:bg-amber-500 text-amber-950 font-black text-2xl sm:text-3xl py-4 rounded-2xl border-2 border-amber-500 shadow-[0_6px_0_#d97706] flex items-center justify-center">
+                        ＋ 1回 ふやす
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2. うんち -->
+            <div class="bg-orange-50 rounded-3xl p-5 sm:p-6 shadow-sm border-4 border-orange-300">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div class="flex items-center space-x-4">
+                        <!-- わかりやすいイラスト -->
+                        <div class="w-20 h-20 sm:w-24 sm:h-24 bg-orange-200 rounded-2xl flex items-center justify-center shrink-0 border-2 border-orange-400">
+                            <svg class="w-14 h-14 sm:w-16 sm:h-16" viewBox="0 0 64 64" fill="none">
+                                <path d="M32 10C35 10 37 13 36 16C42 16 46 20 45 25C50 26 53 31 51 36C55 38 57 44 54 49C52 53 47 55 42 55H22C17 55 12 53 10 49C7 44 9 38 13 36C11 31 14 26 19 25C18 20 22 16 28 16C27 13 29 10 32 10Z" fill="#9A3412" stroke="#431407" stroke-width="3" stroke-linejoin="round"/>
+                                <!-- にっこり顔 -->
+                                <circle cx="26" cy="39" r="2.5" fill="#FFF7ED"/>
+                                <circle cx="38" cy="39" r="2.5" fill="#FFF7ED"/>
+                                <path d="M28 45C30 47.5 34 47.5 36 45" stroke="#FFF7ED" stroke-width="2.5" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl sm:text-3xl font-black text-orange-950">うんち</h3>
+                            <p class="text-base sm:text-lg font-bold text-orange-800">出た回数</p>
+                        </div>
+                    </div>
+
+                    <!-- 回数表示 -->
+                    <div class="flex items-baseline justify-center sm:justify-end bg-white px-6 py-3 rounded-2xl border-2 border-orange-300">
+                        <span id="poopCount" class="text-5xl sm:text-6xl font-black text-orange-800">0</span>
+                        <span class="text-2xl font-black text-stone-700 ml-2">回</span>
+                    </div>
+                </div>
+
+                <!-- 操作ボタン -->
+                <div class="grid grid-cols-3 gap-3 mt-5">
+                    <button onclick="updateCount('poop', -1)" class="btn-push col-span-1 bg-white hover:bg-orange-100 text-orange-950 font-black text-lg sm:text-xl py-4 rounded-2xl border-2 border-orange-300 shadow-[0_4px_0_#fdba74]">
+                        － 1回<br><span class="text-sm font-bold">へらす</span>
+                    </button>
+                    <button onclick="updateCount('poop', 1)" class="btn-push col-span-2 bg-orange-600 hover:bg-orange-700 text-white font-black text-2xl sm:text-3xl py-4 rounded-2xl border-2 border-orange-700 shadow-[0_6px_0_#9a3412] flex items-center justify-center">
+                        ＋ 1回 ふやす
+                    </button>
+                </div>
+            </div>
+
+            <!-- 3. 寝たあとのおしっこ（夜間） -->
+            <div class="bg-indigo-50 rounded-3xl p-5 sm:p-6 shadow-sm border-4 border-indigo-300">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div class="flex items-center space-x-4">
+                        <!-- お月さまとしずくのイラスト -->
+                        <div class="w-20 h-20 sm:w-24 sm:h-24 bg-indigo-200 rounded-2xl flex items-center justify-center shrink-0 border-2 border-indigo-400">
+                            <svg class="w-14 h-14 sm:w-16 sm:h-16" viewBox="0 0 64 64" fill="none">
+                                <!-- 三日月 -->
+                                <path d="M26 10C17.1634 10 10 17.1634 10 26C10 34.8366 17.1634 42 26 42C29.8 42 33.2 40.6 36 38.4C31.5 37.8 28 34 28 29.2C28 24.1 32.1 20 37.2 20C38.5 20 39.7 20.3 40.8 20.8C38.5 14.5 32.7 10 26 10Z" fill="#FDE047" stroke="#312E81" stroke-width="2.5" stroke-linejoin="round"/>
+                                <!-- 星 -->
+                                <circle cx="44" cy="14" r="2" fill="#312E81"/>
+                                <!-- 夜間のしずく -->
+                                <path d="M45 26C45 26 34 39 34 46.5C34 52.8513 38.9249 58 45 58C51.0751 58 56 52.8513 56 46.5C56 39 45 26 45 26Z" fill="#6366F1" stroke="#1E1B4B" stroke-width="3"/>
+                                <path d="M41 46.5C41 49 42.5 51 45 51.5" stroke="#E0E7FF" stroke-width="3" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl sm:text-3xl font-black text-indigo-950">寝たあとのおしっこ</h3>
+                            <p class="text-base sm:text-lg font-bold text-indigo-800">夜、ふとんに入ってから</p>
+                        </div>
+                    </div>
+
+                    <!-- 回数表示 -->
+                    <div class="flex items-baseline justify-center sm:justify-end bg-white px-6 py-3 rounded-2xl border-2 border-indigo-300">
+                        <span id="nightPeeCount" class="text-5xl sm:text-6xl font-black text-indigo-700">0</span>
+                        <span class="text-2xl font-black text-stone-700 ml-2">回</span>
+                    </div>
+                </div>
+
+                <!-- 操作ボタン -->
+                <div class="grid grid-cols-3 gap-3 mt-5">
+                    <button onclick="updateCount('nightPee', -1)" class="btn-push col-span-1 bg-white hover:bg-indigo-100 text-indigo-950 font-black text-lg sm:text-xl py-4 rounded-2xl border-2 border-indigo-300 shadow-[0_4px_0_#a5b4fc]">
+                        － 1回<br><span class="text-sm font-bold">へらす</span>
+                    </button>
+                    <button onclick="updateCount('nightPee', 1)" class="btn-push col-span-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-2xl sm:text-3xl py-4 rounded-2xl border-2 border-indigo-700 shadow-[0_6px_0_#312e81] flex items-center justify-center">
+                        ＋ 1回 ふやす
+                    </button>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- グラフ表示エリア（最近7日間・項目別） -->
+        <section class="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border-4 border-emerald-200 mt-8 space-y-6">
+            <div class="flex items-center space-x-2">
+                <span class="text-3xl">📊</span>
+                <h2 class="text-2xl sm:text-3xl font-black text-stone-800">1週間のグラフ（項目別）</h2>
+            </div>
+
+            <!-- 1. おしっこグラフ -->
+            <div class="bg-amber-50/70 rounded-2xl p-4 border-2 border-amber-200">
+                <div class="flex items-center space-x-2 mb-3">
+                    <span class="w-4 h-4 rounded-full bg-amber-400 border border-amber-600 inline-block"></span>
+                    <h3 class="text-xl sm:text-2xl font-black text-amber-900">おしっこ（起きているとき）</h3>
+                </div>
+                <div class="relative w-full h-48 sm:h-56">
+                    <canvas id="peeChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 2. うんちグラフ -->
+            <div class="bg-orange-50/70 rounded-2xl p-4 border-2 border-orange-200">
+                <div class="flex items-center space-x-2 mb-3">
+                    <span class="w-4 h-4 rounded-full bg-orange-700 border border-orange-900 inline-block"></span>
+                    <h3 class="text-xl sm:text-2xl font-black text-orange-950">うんち（出た回数）</h3>
+                </div>
+                <div class="relative w-full h-48 sm:h-56">
+                    <canvas id="poopChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 3. 寝たあとのおしっこグラフ -->
+            <div class="bg-indigo-50/70 rounded-2xl p-4 border-2 border-indigo-200">
+                <div class="flex items-center space-x-2 mb-3">
+                    <span class="w-4 h-4 rounded-full bg-indigo-600 border border-indigo-900 inline-block"></span>
+                    <h3 class="text-xl sm:text-2xl font-black text-indigo-950">寝たあとのおしっこ（夜間）</h3>
+                </div>
+                <div class="relative w-full h-48 sm:h-56">
+                    <canvas id="nightPeeChart"></canvas>
+                </div>
+            </div>
+
+            <p class="text-center text-stone-500 font-bold text-sm sm:text-base pt-1">
+                ※ 毎日ボタンを押すだけで、それぞれのグラフが自動更新されます
+            </p>
+        </section>
+
+        <!-- 過去のきろく一覧（蓄積データの確認用） -->
+        <section class="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border-4 border-stone-200 mt-8">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center space-x-2">
+                    <span class="text-3xl">📖</span>
+                    <h2 class="text-2xl sm:text-3xl font-black text-stone-800">これまでのきろく</h2>
+                </div>
+                <span id="totalDaysBadge" class="bg-emerald-100 text-emerald-800 font-black text-sm sm:text-base px-3 py-1 rounded-full">
+                    0日分
+                </span>
+            </div>
+            <p class="text-stone-600 font-bold text-sm sm:text-base mb-4">
+                ※ 日付を押すと、その日の記録をなおすことができます
+            </p>
+            <div id="historyList" class="space-y-3 max-h-96 overflow-y-auto pr-1">
+                <!-- JavaScriptで過去の記録リストをここに生成します -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 操作フィードバック用トーストメッセージ -->
+    <div id="toast" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-stone-800 text-white font-black text-lg sm:text-xl px-6 py-4 rounded-2xl shadow-xl opacity-0 pointer-events-none transition-opacity duration-300 z-50 whitespace-nowrap">
+        記録しました！
+    </div>
+
+    <!-- リセット確認用カスタムモーダル -->
+    <div id="confirmModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border-4 border-stone-200 text-center space-y-5">
+            <h3 class="text-2xl font-black text-stone-800">やりなおしますか？</h3>
+            <p class="text-base sm:text-lg font-bold text-stone-600">
+                この日の記録をすべて「0回」にもどします。
+            </p>
+            <div class="grid grid-cols-2 gap-3 pt-2">
+                <button onclick="closeModal()" class="btn-push bg-stone-100 hover:bg-stone-200 text-stone-700 font-black text-lg py-3 rounded-2xl shadow-[0_4px_0_#d6d3d1]">
+                    やめる
+                </button>
+                <button onclick="executeReset()" class="btn-push bg-red-600 hover:bg-red-700 text-white font-black text-lg py-3 rounded-2xl shadow-[0_4px_0_#991b1b]">
+                    0回にもどす
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ==========================================
+        // クラウド保存（Firestore）およびローカル保存の初期設定
+        // ==========================================
+        const STORAGE_KEY = 'grandpa_health_records_v1';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        
+        let db = null;
+        let auth = null;
+        let currentUser = null;
+        let unsubscribeRecords = null;
+        let useCloud = false;
+
+        try {
+            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                const firebaseConfig = JSON.parse(__firebase_config);
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                useCloud = true;
+            }
+        } catch (e) {
+            console.warn("Firebase未設定のためローカル保存モードで動作します:", e);
+            useCloud = false;
+        }
+
+        // ==========================================
+        // 状態管理と初期設定
+        // ==========================================
+        let records = {}; // { "YYYY-MM-DD": { pee: 0, poop: 0, nightPee: 0 } }
+        let selectedDate = new Date(); // 現在選択されている日付
+        let chartInstances = {
+            pee: null,
+            poop: null,
+            nightPee: null
+        };
+
+        // 曜日の日本語配列
+        const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+
+        // 認証とデータ同期の開始
+        async function initApp() {
+            loadLocalData();
+            updateUI();
+
+            if (!useCloud || !auth) {
+                updateSyncStatus(true, "端末に自動ほぞん中");
+                return;
+            }
+
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("認証エラー:", error);
+                updateSyncStatus(true, "端末に自動ほぞん中");
+            }
+        }
+
+        if (auth) {
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    currentUser = user;
+                    updateSyncStatus(true, "クラウド自動ほぞん中");
+                    startListeningRecords(user.uid);
+                } else {
+                    currentUser = null;
+                    if (unsubscribeRecords) unsubscribeRecords();
+                }
+            });
+        }
+
+        function updateSyncStatus(isOnline, text) {
+            const statusEl = document.getElementById('syncStatus');
+            if (!statusEl) return;
+            const dotColor = isOnline ? 'bg-green-300' : 'bg-red-400';
+            statusEl.innerHTML = `<span class="w-2.5 h-2.5 rounded-full ${dotColor} inline-block mr-1.5"></span>${text}`;
+        }
+
+        // ローカルストレージからの読み込み・保存（バックアップ兼フォールバック）
+        function loadLocalData() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    records = JSON.parse(saved);
+                }
+            } catch (e) {
+                console.error("ローカルデータの読み込みエラー:", e);
+            }
+        }
+
+        function saveLocalData() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+            } catch (e) {
+                console.error("ローカルデータの保存エラー:", e);
+            }
+        }
+
+        // クラウドから全期間の蓄積データをリアルタイム取得
+        function startListeningRecords(userId) {
+            if (!userId || !db) return;
+            const recordsCol = collection(db, 'artifacts', appId, 'users', userId, 'health_records');
+            
+            unsubscribeRecords = onSnapshot(recordsCol, (snapshot) => {
+                const loadedRecords = { ...records };
+                snapshot.forEach((docSnap) => {
+                    loadedRecords[docSnap.id] = docSnap.data();
+                });
+                records = loadedRecords;
+                saveLocalData();
+                updateUI();
+            }, (error) => {
+                console.error("データ取得エラー:", error);
+                updateSyncStatus(true, "端末に自動ほぞん中");
+            });
+        }
+
+        // 1日分のデータをクラウド＆ローカルに保存
+        async function saveRecordToStorage(dateKey, data) {
+            saveLocalData();
+
+            if (!currentUser || !db) {
+                updateSyncStatus(true, "端末に自動ほぞん済み");
+                return;
+            }
+
+            updateSyncStatus(true, "ほぞんしています...");
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'health_records', dateKey);
+                await setDoc(docRef, {
+                    pee: data.pee || 0,
+                    poop: data.poop || 0,
+                    nightPee: data.nightPee || 0,
+                    updatedAt: new Date().toISOString()
+                });
+                updateSyncStatus(true, "クラウド自動ほぞん済み");
+            } catch (e) {
+                console.error("クラウド保存エラー:", e);
+                updateSyncStatus(true, "端末に自動ほぞん済み");
+            }
+        }
+
+        // 画面の初期描画
+        window.addEventListener('DOMContentLoaded', () => {
+            initApp();
+        });
+
+        // ==========================================
+        // 日付操作ユーティリティ
+        // ==========================================
+        function formatDateKey(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        function parseDateKey(key) {
+            const [y, m, d] = key.split('-').map(Number);
+            return new Date(y, m - 1, d);
+        }
+
+        function formatDisplayDate(date) {
+            const m = date.getMonth() + 1;
+            const d = date.getDate();
+            const w = WEEKDAYS[date.getDay()];
+            return `${m}月${d}日 (${w})`;
+        }
+
+        function isToday(date) {
+            const today = new Date();
+            return formatDateKey(date) === formatDateKey(today);
+        }
+
+        // 日付を前後に移動
+        window.changeDate = function(days) {
+            const newDate = new Date(selectedDate);
+            newDate.setDate(newDate.getDate() + days);
+            
+            const today = new Date();
+            today.setHours(23, 59, 59, 999);
+            if (newDate > today) return;
+
+            selectedDate = newDate;
+            updateUI();
+        };
+
+        // 履歴リストから特定の日付にジャンプ
+        window.jumpToDate = function(dateKey) {
+            selectedDate = parseDateKey(dateKey);
+            updateUI();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            showToast(`${formatDisplayDate(selectedDate)} をひらきました`);
+        };
+
+        // ==========================================
+        // カウント操作とフィードバック
+        // ==========================================
+        function getRecordForDate(date) {
+            const key = formatDateKey(date);
+            if (!records[key]) {
+                records[key] = { pee: 0, poop: 0, nightPee: 0 };
+            }
+            return records[key];
+        }
+
+        window.updateCount = function(type, delta) {
+            const key = formatDateKey(selectedDate);
+            const record = getRecordForDate(selectedDate);
+            const newValue = (record[type] || 0) + delta;
+            
+            if (newValue < 0) return;
+
+            record[type] = newValue;
+            updateUI();
+            saveRecordToStorage(key, record);
+
+            const labels = {
+                pee: 'おしっこ',
+                poop: 'うんち',
+                nightPee: '寝たあとのおしっこ'
+            };
+            if (delta > 0) {
+                showToast(`「${labels[type]}」を 1回 ふやしました！`);
+            } else {
+                showToast(`「${labels[type]}」を 1回 へらしました`);
+            }
+        };
+
+        let toastTimer = null;
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            if (!toast) return;
+            toast.textContent = message;
+            toast.classList.remove('opacity-0');
+            toast.classList.add('opacity-100');
+
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0');
+            }, 1800);
+        }
+
+        // リセット確認モーダル制御
+        window.resetTodayConfirm = function() {
+            const modal = document.getElementById('confirmModal');
+            if (!modal) return;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        };
+
+        window.closeModal = function() {
+            const modal = document.getElementById('confirmModal');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        };
+
+        window.executeReset = function() {
+            const key = formatDateKey(selectedDate);
+            const resetData = { pee: 0, poop: 0, nightPee: 0 };
+            records[key] = resetData;
+            closeModal();
+            updateUI();
+            saveRecordToStorage(key, resetData);
+            showToast('0回にもどしました');
+        };
+
+        // ==========================================
+        // 画面・グラフ・履歴リストの更新
+        // ==========================================
+        function updateUI() {
+            document.getElementById('currentDateDisplay').textContent = formatDisplayDate(selectedDate);
+            
+            const badge = document.getElementById('todayBadge');
+            const nextBtn = document.getElementById('nextDayBtn');
+            
+            if (isToday(selectedDate)) {
+                badge.textContent = 'きょうの記録';
+                badge.className = 'inline-block bg-amber-200 text-amber-900 text-sm sm:text-base font-black px-3 py-0.5 rounded-full mb-1';
+                nextBtn.disabled = true;
+            } else {
+                badge.textContent = 'かこの記録';
+                badge.className = 'inline-block bg-stone-200 text-stone-700 text-sm sm:text-base font-black px-3 py-0.5 rounded-full mb-1';
+                nextBtn.disabled = false;
+            }
+
+            const currentRecord = getRecordForDate(selectedDate);
+            document.getElementById('peeCount').textContent = currentRecord.pee || 0;
+            document.getElementById('poopCount').textContent = currentRecord.poop || 0;
+            document.getElementById('nightPeeCount').textContent = currentRecord.nightPee || 0;
+
+            renderChart();
+            renderHistoryList();
+        }
+
+        // 蓄積された過去データのリスト描画
+        function renderHistoryList() {
+            const listEl = document.getElementById('historyList');
+            const totalBadge = document.getElementById('totalDaysBadge');
+            if (!listEl) return;
+
+            const sortedKeys = Object.keys(records)
+                .filter(k => {
+                    const r = records[k];
+                    return (r.pee > 0 || r.poop > 0 || r.nightPee > 0);
+                })
+                .sort((a, b) => b.localeCompare(a));
+
+            totalBadge.textContent = `${sortedKeys.length}日分`;
+
+            if (sortedKeys.length === 0) {
+                listEl.innerHTML = `
+                    <div class="text-center py-8 bg-stone-50 rounded-2xl border-2 border-dashed border-stone-200">
+                        <p class="text-lg font-bold text-stone-500">まだ記録がありません</p>
+                        <p class="text-sm font-bold text-stone-400 mt-1">上のボタンを押すと、ここに毎日たまっていきます</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const selectedKey = formatDateKey(selectedDate);
+
+            listEl.innerHTML = sortedKeys.map(key => {
+                const r = records[key];
+                const d = parseDateKey(key);
+                const isSelected = key === selectedKey;
+                const borderClass = isSelected ? 'border-emerald-500 bg-emerald-50' : 'border-stone-200 bg-stone-50 hover:bg-stone-100';
+
+                return `
+                    <button onclick="jumpToDate('${key}')" class="w-full text-left p-4 rounded-2xl border-2 ${borderClass} transition flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xl font-black text-stone-800">${formatDisplayDate(d)}</span>
+                            ${isSelected ? '<span class="bg-emerald-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">ひょうじ中</span>' : ''}
+                        </div>
+                        <div class="flex flex-wrap gap-2 text-base font-black">
+                            <span class="bg-amber-100 text-amber-900 px-3 py-1 rounded-xl border border-amber-300">
+                                ☀️ おしっこ: ${r.pee || 0}回
+                            </span>
+                            <span class="bg-orange-100 text-orange-950 px-3 py-1 rounded-xl border border-orange-300">
+                                💩 うんち: ${r.poop || 0}回
+                            </span>
+                            <span class="bg-indigo-100 text-indigo-950 px-3 py-1 rounded-xl border border-indigo-300">
+                                🌙 寝たあと: ${r.nightPee || 0}回
+                            </span>
+                        </div>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        // ==========================================
+        // グラフの描画
+        // ==========================================
+        // グラフの描画（項目別に3つのグラフを生成）
+        // ==========================================
+        function createSingleBarChart(canvasId, instanceKey, label, labels, data, bgColor, borderColor) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+
+            if (chartInstances[instanceKey]) {
+                chartInstances[instanceKey].destroy();
+            }
+
+            chartInstances[instanceKey] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: label,
+                            data: data,
+                            backgroundColor: bgColor,
+                            borderColor: borderColor,
+                            borderWidth: 2,
+                            borderRadius: 8,
+                            barPercentage: 0.6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            titleFont: { size: 18, family: 'Zen Maru Gothic' },
+                            bodyFont: { size: 16, family: 'Zen Maru Gothic' },
+                            padding: 12,
+                            callbacks: {
+                                label: function(context) {
+                                    return ` ${context.dataset.label}: ${context.parsed.y} 回`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                font: {
+                                    size: 15,
+                                    weight: 'bold',
+                                    family: 'Zen Maru Gothic'
+                                },
+                                color: '#2D3748'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            suggestedMax: 5,
+                            ticks: {
+                                stepSize: 1,
+                                font: {
+                                    size: 15,
+                                    weight: 'bold',
+                                    family: 'Zen Maru Gothic'
+                                },
+                                color: '#2D3748',
+                                callback: function(value) {
+                                    return value + '回';
+                                }
+                            },
+                            grid: {
+                                color: '#E2E8F0'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderChart() {
+            const labels = [];
+            const peeData = [];
+            const poopData = [];
+            const nightPeeData = [];
+
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date(selectedDate);
+                d.setDate(d.getDate() - i);
+                const key = formatDateKey(d);
+                const rec = records[key] || { pee: 0, poop: 0, nightPee: 0 };
+
+                labels.push(`${d.getMonth() + 1}/${d.getDate()}`);
+                peeData.push(rec.pee || 0);
+                poopData.push(rec.poop || 0);
+                nightPeeData.push(rec.nightPee || 0);
+            }
+
+            createSingleBarChart('peeChart', 'pee', 'おしっこ', labels, peeData, '#FBBF24', '#D97706');
+            createSingleBarChart('poopChart', 'poop', 'うんち', labels, poopData, '#9A3412', '#7C2D12');
+            createSingleBarChart('nightPeeChart', 'nightPee', '寝たあとのおしっこ', labels, nightPeeData, '#4F46E5', '#3730A3');
+        }
+    </script>
+</body>
+</html>
